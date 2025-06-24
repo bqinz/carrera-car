@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Juego de Carreras de Carros</title>
+    <style>
+        /* --- CSS del Juego --- */
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            background-color: #2c3e50; /* Fondo oscuro */
+            color: #ecf0f1; /* Color de texto claro */
+        }
+
+        h1 {
+            font-size: 3rem;
+            margin-bottom: 20px;
+            color: #f1c40f; /* Amarillo vibrante */
+        }
+
+        .game-container {
+            background-color: #34495e; /* Fondo del contenedor del juego */
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+            text-align: center;
+        }
+
+        .track {
+            display: flex;
+            flex-direction: column;
+            width: 800px; /* Ancho de la pista */
+            height: 200px; /* Alto de la pista */
+            border: 5px solid #7f8c8d; /* Borde de la pista */
+            background-color: #555; /* Color de la pista */
+            position: relative; /* Para posicionar la meta y los carros */
+            margin-bottom: 30px;
+            overflow: hidden; /* Asegura que los carros no se salgan visualmente */
+        }
+
+        .start-line, .finish-line {
+            position: absolute;
+            height: 100%;
+            width: 10px; /* Ancho de las líneas */
+            background-color: #ecf0f1; /* Color blanco/gris claro */
+            z-index: 1; /* Para que estén por encima de los carros */
+            display: flex;
+            align-items: center; /* Centrar el texto en la línea */
+            justify-content: center;
+            font-weight: bold;
+            font-size: 1.4rem;
+            color: #333;
+        }
+
+        .start-line {
+            left: 0;
+            background-color: #c0392b; /* Rojo para la salida */
+        }
+
+        .start-line::after {
+            content: "SALIDA";
+            transform: rotate(-90deg); /* Rotar texto */
+            white-space: nowrap; /* Evitar salto de línea */
+            color: white; /* Color blanco para el texto de la línea */
+        }
+
+        .finish-line {
+            right: 0; /* Posicionar al final */
+            background-color: #27ae60; /* Verde para la meta */
+        }
+
+        .finish-line::after {
+            content: "META";
+            transform: rotate(-90deg);
+            white-space: nowrap;
+            color: white; /* Color blanco para el texto de la línea */
+        }
+
+        .car {
+            position: absolute;
+            left: 0; /* Posición inicial */
+            width: 80px; /* Ancho aumentado */
+            height: 30px; /* Alto reducido */
+            border-radius: 5px 5px 0 0; /* Redondeado solo arriba */
+            /* La transición se aplica en JS al cambiar la posición */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            font-size: 0.8rem; /* Reducido el tamaño del texto */
+            z-index: 2; /* Para que los carros estén por encima de las líneas */
+            /* Añadido un pseudo-elemento para simular un alerón */
+        }
+
+        .car::after {
+            content: '';
+            position: absolute;
+            bottom: -10px; /* Posicionado debajo del carro */
+            left: 10px;
+            width: 0;
+            height: 0;
+            border-left: 15px solid transparent;
+            border-right: 15px solid transparent;
+            border-top: 10px solid currentColor; /* Usa el color del carro */
+        }
+
+        #car1 {
+            background-color: #FF4136; /* Rojo Ferrari */
+            top: 20px; /* Posición vertical en la pista */
+        }
+
+        #car2 {
+            background-color: #0074D9; /* Azul Racing */
+            top: 100px; /* Posición vertical en la pista */
+        }
+
+        .controls {
+            margin-top: 20px;
+        }
+
+        .controls button {
+            background-color: #2ecc71; /* Verde brillante */
+            color: white;
+            padding: 12px 25px;
+            border: none;
+            border-radius: 5px;
+            font-size: 1.6rem;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+            margin: 0 10px;
+        }
+
+        .controls button:hover {
+            background-color: #27ae60;
+        }
+
+        .message {
+            margin-top: 25px;
+            font-size: 2rem;
+            font-weight: bold;
+            color: #f1c40f;
+            min-height: 2.4rem; /* Para evitar saltos cuando el texto cambia */
+        }
+
+        .reset-button {
+            background-color: #e67e22 !important; /* Naranja para reiniciar */
+            margin-top: 20px;
+            padding: 10px 20px !important;
+            font-size: 1.4rem !important;
+        }
+
+        .reset-button:hover {
+            background-color: #d35400 !important;
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <h1>¡Carrera de Carros!</h1>
+        <p class="message" id="gameMessage">Presiona 'Iniciar Carrera' para comenzar.</p>
+
+        <div class="track">
+            <div class="start-line"></div>
+            <div id="car1" class="car">Carro 1</div>
+            <div id="car2" class="car">Carro 2</div>
+            <div class="finish-line"></div>
+        </div>
+
+        <div class="controls">
+            <button id="startButton">Iniciar Carrera</button>
+            <button id="resetButton" class="reset-button" style="display: none;">Reiniciar Juego</button>
+        </div>
+    </div>
+
+    <script>
+        // --- JavaScript del Juego ---
+        const car1 = document.getElementById('car1');
+        const car2 = document.getElementById('car2');
+        const startButton = document.getElementById('startButton');
+        const resetButton = document.getElementById('resetButton');
+        const gameMessage = document.getElementById('gameMessage');
+        const track = document.querySelector('.track'); // Obtener el elemento track
+        const carWidth = car1.offsetWidth; // Ambos carros tienen el mismo ancho
+        const finishLineThickness = 10; // Ancho de la línea de meta CSS
+
+        // Calcular la posición de la meta. Un carro gana cuando su borde DERECHO alcanza esta posición.
+        // track.offsetWidth es el ancho total del track (incluyendo bordes).
+        // Restamos el ancho del carro y el grosor de la línea de meta para que el carro se "superponga" a la línea.
+        let finishLineTargetPosition;
+
+        let car1Position = 0;
+        let car2Position = 0;
+        let gameInterval;
+        let gameActive = false;
+
+        // Función para mover un carro
+        function moveCar(carElement, currentPosition, speed) {
+            const newPosition = currentPosition + speed;
+            carElement.style.left = `${newPosition}px`; // Cambiamos a 'left' para un control más directo
+            return newPosition;
+        }
+
+        // Función para revisar si alguien ganó
+        function checkWinner() {
+            // El carro gana cuando su borde derecho (posición actual + ancho del carro) alcanza o supera la meta
+            if ((car1Position + carWidth) >= finishLineTargetPosition) {
+                endGame('¡Carro 1 ha ganado!');
+            } else if ((car2Position + carWidth) >= finishLineTargetPosition) {
+                endGame('¡Carro 2 ha ganado!');
+            }
+        }
+
+        // Función para terminar el juego
+        function endGame(message) {
+            clearInterval(gameInterval);
+            gameActive = false;
+            gameMessage.textContent = message;
+            startButton.style.display = 'none'; // Ocultar botón de inicio
+            resetButton.style.display = 'inline-block'; // Mostrar botón de reinicio
+        }
+
+        // Función para iniciar la carrera
+        function startGame() {
+            if (gameActive) return; // Evitar iniciar múltiples veces
+            gameActive = true;
+            gameMessage.textContent = '¡La carrera ha comenzado!';
+            startButton.style.display = 'none';
+            resetButton.style.display = 'none';
+
+            // Recalcular la posición de la meta al inicio de cada juego por si cambia el tamaño de la ventana
+            finishLineTargetPosition = track.offsetWidth - finishLineThickness;
+
+            gameInterval = setInterval(() => {
+                // Mover carros con una velocidad aleatoria
+                const speed1 = Math.random() * 8 + 3; // Velocidad entre 3 y 11 (ajustado para ver mejor el progreso)
+                const speed2 = Math.random() * 8 + 3; // Velocidad entre 3 y 11
+
+                car1Position = moveCar(car1, car1Position, speed1);
+                car2Position = moveCar(car2, car2Position, speed2);
+
+                checkWinner();
+            }, 80); // Actualizar cada 80ms para un movimiento más fluido y rápido
+        }
+
+        // Función para reiniciar el juego
+        function resetGame() {
+            clearInterval(gameInterval);
+            gameActive = false;
+            car1Position = 0;
+            car2Position = 0;
+            car1.style.left = '0px'; // Volver a la posición inicial
+            car2.style.left = '0px'; // Volver a la posición inicial
+            gameMessage.textContent = 'Presiona \'Iniciar Carrera\' para comenzar.';
+            startButton.style.display = 'inline-block'; // Mostrar botón de inicio
+            resetButton.style.display = 'none'; // Ocultar botón de reinicio
+        }
+
+        // Event Listeners
+        startButton.addEventListener('click', startGame);
+        resetButton.addEventListener('click', resetGame);
+
+        // Asegurarse de que el juego esté en estado inicial al cargar la página
+        // y calcular la posición de la meta inicialmente
+        resetGame();
+    </script>
+</body>
+</html>
